@@ -9,7 +9,8 @@ st.set_page_config(
 )
 
 # Creación de pestañas
-tabs = ["Análisis de Competición", "Análisis de Equipos", "Comparativa de Equipos"]
+# tabs = ["Análisis de Competición", "Análisis de Equipos", "Comparativa de Equipos"]
+tabs = ["Análisis de Competición", "Análisis de Equipos"]
 selected_tab = st.sidebar.radio("Selecciona una pestaña:", tabs)
 
 # Mostrar el contenido dependiendo de la pestaña seleccionada
