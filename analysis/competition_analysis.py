@@ -676,7 +676,10 @@ def get_maximo_goleador_total(df, nombre_competicion):
     top_10_players = top_10_players.sort_values('Goals', ascending=False)
     top_10_players['Total Goles'] = top_10_players.apply(lambda x: get_goles_equipo(df, x['Team']), axis=1)
     top_10_players['Percentage Goals'] = top_10_players['Goals'] / top_10_players['Total Goles'] * 100
-    print(top_10_players.head())
+
+    # Create a bar plot with the top 10 players
+    
+
 
     # Create a bar plot with the top 10 players
     fig_top_players = px.bar(
@@ -686,10 +689,9 @@ def get_maximo_goleador_total(df, nombre_competicion):
         color='Team', 
         orientation='h', 
         title=f'Top 10 goleadores de {nombre_competicion}',
-        category_orders={"Player Name": top_10_players['Player Name'].tolist()}  # Ordenar según los nombres en el DataFrame ordenado
+        category_orders={"Player Name": top_10_players['Player Name'].tolist()},  # Ordenar según los nombres en el DataFrame ordenado
+        hover_data={'Percentage Goals': ':.2f'}  # Mostrar porcentaje con dos decimales al hacer hover
     )
-
-
 
     fig_top_players.update_layout(
         title=dict(
@@ -704,16 +706,10 @@ def get_maximo_goleador_total(df, nombre_competicion):
         yaxis_title='Jugador',
         paper_bgcolor='rgba(0,0,0,0)',  # Transparent background for the paper
         plot_bgcolor='rgba(0,0,0,0)',   # Transparent background for the plot
-        font=dict(color='#ececec', size = 16)  # Font color
+        font=dict(color='#ececec', size=16)  # Font color
     )
 
-    # Add hover info with the percentage of goals
-    fig_top_players.update_traces(
-        hovertemplate='<b>Jugador:</b> %{y}<br>'
-                      '<b>Goles:</b> %{x}<br>'
-                      '<b>Porcentaje de Goles:</b> %{customdata[0]:.2f}%<extra></extra>',
-        customdata=top_10_players[['Percentage Goals']]
-    )
+
 
 
  
