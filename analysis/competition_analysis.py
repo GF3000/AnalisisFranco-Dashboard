@@ -600,11 +600,19 @@ def get_maximo_goleador_partido(df, nombre_competicion):
     # Get the top 10 players
     top_10_players = top_players_df.head(10)
 
-    top_10_players = top_10_players.sort_values('Goals', ascending=True)
+    top_10_players = top_10_players.sort_values('Goals', ascending=False)
 
 
     # Create a bar plot with the top 10 players
-    fig_top_players = px.bar(top_10_players, x='Goals', y='Player Name', color='Team', orientation='h', title=f'Top 10 goleadores de {nombre_competicion}')
+    fig_top_players = px.bar(
+        top_10_players, 
+        x='Goals', 
+        y='Player Name', 
+        color='Team', 
+        orientation='h', 
+        title=f'Top 10 goleadores de {nombre_competicion}',
+        category_orders={"Player Name": top_10_players['Player Name'].tolist()}
+    )
 
     fig_top_players.update_layout(
         title=dict(
@@ -665,11 +673,22 @@ def get_maximo_goleador_total(df, nombre_competicion):
     # Get the top 10 players
     top_10_players = top_players_df.head(10)
 
-    top_10_players = top_10_players.sort_values('Goals', ascending=True)
+    top_10_players = top_10_players.sort_values('Goals', ascending=False)
+    top_10_players['Total Goles'] = top_10_players.apply(lambda x: get_goles_equipo(df, x['Team']), axis=1)
+    top_10_players['Percentage Goals'] = top_10_players['Goals'] / top_10_players['Total Goles'] * 100
     print(top_10_players.head())
 
     # Create a bar plot with the top 10 players
-    fig_top_players = px.bar(top_10_players, x='Goals', y='Player Name', color='Team', orientation='h', title=f'Top 10 goleadores de {nombre_competicion}')
+    fig_top_players = px.bar(
+        top_10_players, 
+        x='Goals', 
+        y='Player Name', 
+        color='Team', 
+        orientation='h', 
+        title=f'Top 10 goleadores de {nombre_competicion}',
+        category_orders={"Player Name": top_10_players['Player Name'].tolist()}  # Ordenar según los nombres en el DataFrame ordenado
+    )
+
 
 
     fig_top_players.update_layout(
@@ -688,12 +707,38 @@ def get_maximo_goleador_total(df, nombre_competicion):
         font=dict(color='#ececec', size = 16)  # Font color
     )
 
+    # Add hover info with the percentage of goals
+    fig_top_players.update_traces(
+        hovertemplate='<b>Jugador:</b> %{y}<br>'
+                      '<b>Goles:</b> %{x}<br>'
+                      '<b>Porcentaje de Goles:</b> %{customdata[0]:.2f}%<extra></extra>',
+        customdata=top_10_players[['Percentage Goals']]
+    )
 
+
+ 
 
 
     
     
     return fig_top_players
+
+def get_goles_equipo(df, nombre_equipo) -> int:
+
+    # Extract partidos where nombre_local == nombre_equipo 
+    partidos_local = df[df['nombre_local'] == nombre_equipo]
+    # Extract partidos where nombre_visitante == nombre_equipo
+    partidos_visitante = df[df['nombre_visitante'] == nombre_equipo]
+
+    # Calculate the total number of goals scored by the team, use goles_local and goles_visitante columns
+    goles_local = partidos_local['goles_local'].sum()
+    goles_visitante = partidos_visitante['goles_visitante'].sum()
+
+    # Calculate the total number of goals scored by the team
+    total_goles = goles_local + goles_visitante
+
+    return total_goles
+    
 
 
 def get_maximo_excluido(df, nombre_competicion):
