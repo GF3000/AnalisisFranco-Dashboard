@@ -786,10 +786,16 @@ def get_maximo_excluido(df, nombre_competicion):
     # Get the top 10 players
     top_10_players_exclusiones = top_players_exclusiones_df.head(10)
 
-    top_10_players_exclusiones = top_10_players_exclusiones.sort_values('Exclusiones', ascending=True)
+    top_10_players_exclusiones = top_10_players_exclusiones.sort_values('Exclusiones', ascending=False)
 
     # Create a bar plot with the top 10 players
-    fig_top_players_exclusiones = px.bar(top_10_players_exclusiones, x='Exclusiones', y='Player Name', color='Team', orientation='h', title=f'Top 10 jugadores más excluidos de {nombre_competicion}')
+    fig_top_players_exclusiones = px.bar(top_10_players_exclusiones,
+                                          x='Exclusiones',
+                                            y='Player Name',
+                                              color='Team',
+                                                orientation='h',
+                                                  title=f'Top 10 jugadores más excluidos de {nombre_competicion}',
+                                                    category_orders={"Player Name": top_10_players_exclusiones['Player Name'].tolist()})
 
     fig_top_players_exclusiones.update_layout(
         title=dict(
