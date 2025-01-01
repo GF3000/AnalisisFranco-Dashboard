@@ -584,15 +584,12 @@ def get_maximo_goleador_partido(df, nombre_competicion):
             player_name = f"{row[col.replace('_goles', '_nombre')]} vs {rival}"
             goals = row[col]
             partido = row['partido']
+            team_goals = row['goles_local'] if col in local_goles_columns else row['goles_visitante']
             # Append the player and their goals to the list
-            top_players.append((partido, player_name, goals, team))
+            top_players.append((partido, player_name, goals, team_goals, team))
 
     # Create a DataFrame from the top_players list
-    top_players_df = pd.DataFrame(top_players, columns=['Acta ID', 'Player Name', 'Goals', 'Team'])
-
-
-    # Create a DataFrame from the top_players list
-    top_players_df = pd.DataFrame(top_players, columns=['Acta ID', 'Player Name', 'Goals', 'Team'])
+    top_players_df = pd.DataFrame(top_players, columns=['Acta ID', 'Player Name', 'Goals', 'Team Goals', 'Team'])
 
     # Sort the DataFrame by the number of goals in descending order
     top_players_df = top_players_df.sort_values('Goals', ascending=False)
@@ -601,6 +598,11 @@ def get_maximo_goleador_partido(df, nombre_competicion):
     top_10_players = top_players_df.head(10)
 
     top_10_players = top_10_players.sort_values('Goals', ascending=False)
+
+    # Add percentage of goals to the DataFrame (player goals / team goals)
+    top_10_players['Percentage Goals'] = top_10_players['Goals'] / top_10_players['Team Goals'] * 100 
+    # Add "%" to the hover data
+    top_10_players['Percentage Goals'] = top_10_players['Percentage Goals'].apply(lambda x: f"{x:.2f}%")
 
 
     # Create a bar plot with the top 10 players
@@ -611,7 +613,8 @@ def get_maximo_goleador_partido(df, nombre_competicion):
         color='Team', 
         orientation='h', 
         title=f'Top 10 goleadores de {nombre_competicion}',
-        category_orders={"Player Name": top_10_players['Player Name'].tolist()}
+        category_orders={"Player Name": top_10_players['Player Name'].tolist()},
+        hover_data={'Percentage Goals'}
     )
 
     fig_top_players.update_layout(
@@ -676,6 +679,7 @@ def get_maximo_goleador_total(df, nombre_competicion):
     top_10_players = top_10_players.sort_values('Goals', ascending=False)
     top_10_players['Total Goles'] = top_10_players.apply(lambda x: get_goles_equipo(df, x['Team']), axis=1)
     top_10_players['Percentage Goals'] = top_10_players['Goals'] / top_10_players['Total Goles'] * 100
+    top_10_players['Percentage Goals'] = top_10_players['Percentage Goals'].apply(lambda x: f"{x:.2f}%")
 
     # Create a bar plot with the top 10 players
     
@@ -690,7 +694,7 @@ def get_maximo_goleador_total(df, nombre_competicion):
         orientation='h', 
         title=f'Top 10 goleadores de {nombre_competicion}',
         category_orders={"Player Name": top_10_players['Player Name'].tolist()},  # Ordenar según los nombres en el DataFrame ordenado
-        hover_data={'Percentage Goals': ':.2f'}  # Mostrar porcentaje con dos decimales al hacer hover
+        hover_data={'Percentage Goals'}  # Mostrar porcentaje con dos decimales al hacer hover
     )
 
     fig_top_players.update_layout(
