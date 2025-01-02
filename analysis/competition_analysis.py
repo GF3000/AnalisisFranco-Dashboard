@@ -98,6 +98,10 @@ def run_analysis():
 
         st.plotly_chart(fig_top_goleadores_total)
 
+        fig_top_goladores_media = get_maximo_goleador_media(df, nombre_competicion)
+
+        st.plotly_chart(fig_top_goladores_media)
+
         fig_top_excluidos = get_maximo_excluido(df, nombre_competicion)
 
         st.plotly_chart(fig_top_excluidos)
@@ -722,6 +726,90 @@ def get_maximo_goleador_total(df, nombre_competicion):
     
     
     return fig_top_players
+
+def get_maximo_goleador_media(df, nombre_competicion):
+    
+    # Extract columns related to player goals
+    local_goles_columns = [col for col in df.columns if 'jugador_' in col and '_local_goles' in col]
+    visitante_goles_columns = [col for col in df.columns if 'jugador_' in col and '_visitante_goles' in col]
+
+    # Combine both lists
+    all_goles_columns = local_goles_columns + visitante_goles_columns
+
+    # Create a list to store the players and their goals
+    top_players = []
+
+    # Iterate over all rows in the DataFrame
+    for index, row in df.iterrows():
+        # Iterate over the columns with player goals
+        for col in all_goles_columns:
+            # Get the player name and goals
+            team = row['nombre_local'] if col in local_goles_columns else row['nombre_visitante']
+            player_name = row[col.replace('_goles', '_nombre')]
+            goals = row[col]
+            # Append the player and their goals to the list
+            top_players.append((player_name, goals, team))
+
+    # Create a DataFrame from the top_players list
+    top_players_df = pd.DataFrame(top_players, columns=['Player Name', 'Goals', 'Team'])
+
+    # Join the DataFrame with the player names and calculate the sum and avg of goals
+    top_players_df = top_players_df.groupby(['Player Name', 'Team']).agg({'Goals': ['sum', 'mean']}).reset_index()
+
+    top_players_df.columns = ['Player Name', 'Team', 'Goals', 'Mean Goals']
+
+    # Sort the DataFrame by the number median
+    top_players_df = top_players_df.sort_values('Mean Goals', ascending=False)
+
+    # Reset the index of the DataFrame
+    top_players_df = top_players_df.reset_index(drop=True)
+
+    # Get the top 10 players
+    top_10_players = top_players_df.head(10)
+
+    top_10_players = top_10_players.sort_values('Mean Goals', ascending=False)
+    top_10_players['Total Goles'] = top_10_players.apply(lambda x: get_goles_equipo(df, x['Team']), axis=1)
+
+    top_10_players['Percentage Goals'] = top_10_players['Goals'] / top_10_players['Total Goles'] * 100
+    top_10_players['Percentage Goals'] = top_10_players['Percentage Goals'].apply(lambda x: f"{x:.2f}%")
+
+    # Create a bar plot with the top 10 players
+    fig_top_players = px.bar(
+        top_10_players, 
+        x='Mean Goals', 
+        y='Player Name', 
+        color='Team', 
+        orientation='h', 
+        title=f'Top 10 goleadores de {nombre_competicion}',
+        # Ordenar según los nombres en el DataFrame ordenado
+        category_orders={"Player Name": top_10_players['Player Name'].tolist()},
+        hover_data={'Percentage Goals', 'Goals'}  # Mostrar porcentaje y goles con dos decimales al hacer hover
+    )
+
+    fig_top_players.update_layout(
+        title=dict(
+            text=f'Top 10 goleadores de {nombre_competicion} en promedio',
+            x=0.5,  # Position the title in the center
+            xanchor='center',  # Anchor the title to the center
+            y=0.9,  # Position the title at the top
+            yanchor='top',  # Anchor the title to the top
+            font=dict(color='#ececec', family="Arial", size=20)  # Color del texto en amarillo y en negrita
+        ),
+        xaxis_title='Goles',
+        yaxis_title='Jugador',
+        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background for the paper
+        plot_bgcolor='rgba(0,0,0,0)',   # Transparent background for the plot
+        font=dict(color='#ececec', size=16)  # Font color
+    )
+
+    return fig_top_players
+
+
+
+
+    
+
+
 
 def get_goles_equipo(df, nombre_equipo) -> int:
 
