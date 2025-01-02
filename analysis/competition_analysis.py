@@ -90,9 +90,6 @@ def run_analysis():
     # Tab 4: Análisis de jugadores
 
     with tabs[3]:
-        fig_top_goleadores = get_maximo_goleador_partido(df, nombre_competicion)
-
-        st.plotly_chart(fig_top_goleadores)
 
         fig_top_goleadores_total = get_maximo_goleador_total(df, nombre_competicion)
 
@@ -101,6 +98,12 @@ def run_analysis():
         fig_top_goladores_media = get_maximo_goleador_media(df, nombre_competicion)
 
         st.plotly_chart(fig_top_goladores_media)
+        
+        fig_top_goleadores = get_maximo_goleador_partido(df, nombre_competicion)
+
+        st.plotly_chart(fig_top_goleadores)
+
+        st.divider()
 
         fig_top_excluidos = get_maximo_excluido(df, nombre_competicion)
 
