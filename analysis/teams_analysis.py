@@ -82,6 +82,11 @@ def run_analysis():
         st.write("Resumen de los Resultados:")
         st.write(summary_table)
 
+        # Displat gt vs dif
+        st.write("Goles totales vs Diferencia de goles:")
+        fig_gt_dif = get_gt_vs_dif(all_matches, selected_team)
+        st.plotly_chart(fig_gt_dif)
+
 
         # Mejores 3 partidos (mayor diferencia de goles)
         st.write("Mejores 3 partidos:")
@@ -1633,6 +1638,57 @@ def get_maximos_infractores(df, chosen_team):
         plot_bgcolor='rgba(0,0,0,0)',   # Transparent background for the plot
         font=dict(color='#ececec')  # Font color
     )
+
+    return fig
+
+
+
+
+def get_gt_vs_dif(df, chosen_team):
+    # Scatter plot with the goles totales (y) vs diferencia de goles (x)
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=df['diferencia_goles'],
+        y=df['goles_totales'],
+        mode='markers',
+        marker=dict(
+            color='#FFA500',
+            size=10
+        ),
+        text=df['partido'],
+        hoverinfo='text'
+    ))
+
+    # Add a line at x = 0 for reference
+
+    fig.add_shape(
+        type='line',
+        x0=0,
+        y0=0,
+        x1=0,
+        y1=df['goles_totales'].max(),
+        line=dict(color='rgba(255, 0, 0, 0.35)', width=2, dash='dash')
+    )
+
+    # Update layout
+
+    fig.update_layout(
+        title=dict(
+            text=f'Goles Totales vs Diferencia de Goles de {chosen_team}',
+            x=0.5,  # Position the title in the center
+            xanchor='center',  # Anchor the title to the center
+            y=0.9,  # Position the title at the top
+            yanchor='top'  # Anchor the title to the top
+        ),
+        xaxis=dict(title='Diferencia de Goles'),
+        yaxis=dict(title='Goles Totales'),
+        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background for the paper
+        plot_bgcolor='rgba(0,0,0,0)',   # Transparent background for the plot
+        font=dict(color='#ececec')  # Font color
+    )
+    
+
 
     return fig
 
