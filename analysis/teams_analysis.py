@@ -715,7 +715,7 @@ def get_fig_resultados_min50(df, chosen_team):
     umbral = 2
 
     # Crear la columna para el resultado al minuto 50
-    df['resultado_min_50'] = df['parcial_10_my_team'] - df['parcial_10_rival']
+    df['resultado_min_50'] = df['parcial_10_my_team'] - df['parcial_10_rival'] if num_parciales == 12 else df['parcial_8_my_team'] - df['parcial_8_rival']
     df['resultado_min_50'] = df['resultado_min_50'].apply(
         lambda x: 'Victoria (Min 50)' if x > umbral else ('Derrota (Min 50)' if x < -umbral else 'Empate (Min 50)')
     )
@@ -731,7 +731,7 @@ def get_fig_resultados_min50(df, chosen_team):
         if col not in heatmap_data.columns:
             heatmap_data[col] = 0
 
-    for row in ['Victoria (Min 50)', 'Empate (Min 50)', 'Derrota (Min 50)']:
+    for row in ['Victoria (Últimos 10 mins)', 'Empate (Últimos 10 mins)', 'Derrota (Últimos 10 mins)']:
         if row not in heatmap_data.index:
             heatmap_data.loc[row] = 0
 
@@ -1453,7 +1453,7 @@ def get_analisis_tiempos_muertos(df, chosen_team):
     # Create a histogram with the formatted tiempos_muertos, range 0-60 5 by 5
     fig = go.Figure()
     # Add the histogram
-    fig.add_trace(go.Histogram(x=formatted_tiempos_muertos, xbins=dict(start=0, end=65, size=5), 
+    fig.add_trace(go.Histogram(x=formatted_tiempos_muertos, xbins=dict(start=0, end=num_parciales*5+5, size=5), 
                             marker_color='#FFA500', opacity=0.75))
 
     # Update layout for the entire figure
@@ -1465,7 +1465,7 @@ def get_analisis_tiempos_muertos(df, chosen_team):
             y=0.9,  # Position the title at the top
             yanchor='top'  # Anchor the title to the top
         ),
-        xaxis=dict(title='Minutos', tickmode='linear', tick0=0, dtick=5, range=[0, 60]),
+        xaxis=dict(title='Minutos', tickmode='linear', tick0=0, dtick=5, range=[0, 5 * num_parciales]),
         yaxis=dict(title='Cantidad de Tiempos Muertos'),
         paper_bgcolor='rgba(0,0,0,0)',  # Transparent background for the paper
         plot_bgcolor='rgba(0,0,0,0)',   # Transparent background for the plot
