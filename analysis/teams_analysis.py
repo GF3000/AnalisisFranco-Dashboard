@@ -9,6 +9,8 @@ from plotly.subplots import make_subplots
 import numpy as np
 from scipy.stats import mannwhitneyu, ks_2samp
 
+num_parciales = 12
+
 def run_analysis():
     st.header("Análisis de los Partidos")
 
@@ -25,6 +27,15 @@ def run_analysis():
     if not selected_competition:
         st.warning("Selecciona una competición para continuar.")
         st.stop()
+
+    # Categoria Infantil Check box, if pressed, num_parciales = 4
+    if st.checkbox("Categoria Infantil (25 mins por parte)"):
+        global num_parciales
+        num_parciales = 10
+    else:
+        num_parciales = 12
+
+
 
 
     # Cargamos el df de partidos
@@ -779,7 +790,7 @@ def get_fig_resultados_parciales(df, chosen_team):
     same_winner_counts = []
     different_winner_counts = []
     empate_counts = []
-    parciales = list(range(1, 13))  # Números de parciales del 1 al 12
+    parciales = list(range(1, 1+num_parciales))  # Números de parciales del 1 al 12
 
     # Loop sobre los parciales del 1 al 12
     for i in parciales:
@@ -860,7 +871,7 @@ def get_fig_resultados_parciales(df, chosen_team):
 
     print(f"Mediana de partidos ganados por {chosen_team}: {median_same_winner}")
     print(f"Mediana de partidos perdidos por {chosen_team}: {median_same_loser}")
-    total_partidos = (sum(same_winner_counts) + sum(different_winner_counts) + sum(empate_counts))/12
+    total_partidos = (sum(same_winner_counts) + sum(different_winner_counts) + sum(empate_counts))/num_parciales
     print(f"Total de partidos: {total_partidos}")
 
     # Add a line for the median
@@ -868,7 +879,7 @@ def get_fig_resultados_parciales(df, chosen_team):
         type='line',
         x0=0.5,
         y0=median_same_winner,
-        x1=12.5,
+        x1=num_parciales + 0.5,
         y1=median_same_winner,
         line=dict(color='Red', width=2, dash='dash')
     )
@@ -877,7 +888,7 @@ def get_fig_resultados_parciales(df, chosen_team):
         type='line',
         x0=0.5,
         y0=total_partidos - median_same_loser,
-        x1=12.5,
+        x1=num_parciales + 0.5,
         y1=total_partidos - median_same_loser,
         line=dict(color='Blue', width=2, dash='dash')
     )
@@ -892,7 +903,7 @@ def get_fig_resultados_parciales_local(df, chosen_team):
     different_winner_counts_local = []
     empate_counts_local = []
     
-    parciales = list(range(1, 13))  # Números de parciales del 1 al 12
+    parciales = list(range(1, 1+num_parciales))  # Números de parciales del 1 al 12
 
     local_matches_only = df[df['my_team_is'] == 'Local']
 
@@ -973,7 +984,7 @@ def get_fig_resultados_parciales_local(df, chosen_team):
 
     median_same_winner_local = np.median(same_winner_counts_local)
     median_same_loser_local = np.median(different_winner_counts_local)
-    total_partidos_local = (sum(same_winner_counts_local) + sum(different_winner_counts_local) + sum(empate_counts_local))/12
+    total_partidos_local = (sum(same_winner_counts_local) + sum(different_winner_counts_local) + sum(empate_counts_local))/num_parciales
 
 
     # Add a line for the median
@@ -981,7 +992,7 @@ def get_fig_resultados_parciales_local(df, chosen_team):
         type='line',
         x0=0.5,
         y0=median_same_winner_local,
-        x1=12.5,
+        x1=num_parciales + 0.5,
         y1=median_same_winner_local,
         line=dict(color='Red', width=2, dash='dash')
     )
@@ -990,7 +1001,7 @@ def get_fig_resultados_parciales_local(df, chosen_team):
         type='line',
         x0=0.5,
         y0=total_partidos_local - median_same_loser_local,
-        x1=12.5,
+        x1=num_parciales + 0.5,
         y1=total_partidos_local - median_same_loser_local,
         line=dict(color='Blue', width=2, dash='dash')
     )
@@ -1004,7 +1015,7 @@ def get_fig_resultados_parciales_visitante(df, chosen_team):
     different_winner_counts_visitante = []
     empate_counts_visitante = []
     
-    parciales = list(range(1, 13))  # Números de parciales del 1 al 12
+    parciales = list(range(1, 1+num_parciales))  # Números de parciales del 1 al 12
 
     visiting_matches_only = df[df['my_team_is'] == 'Visitante']
 
@@ -1084,14 +1095,14 @@ def get_fig_resultados_parciales_visitante(df, chosen_team):
 
     median_same_winner_visitante = np.median(same_winner_counts_visitante)
     median_same_loser_visitante = np.median(different_winner_counts_visitante)
-    total_partidos_visitante = (sum(same_winner_counts_visitante) + sum(different_winner_counts_visitante) + sum(empate_counts_visitante))/12
+    total_partidos_visitante = (sum(same_winner_counts_visitante) + sum(different_winner_counts_visitante) + sum(empate_counts_visitante))/num_parciales
 
     # Add a line for the median
     fig_visitante.add_shape(
         type='line',
         x0=0.5,
         y0=median_same_winner_visitante,
-        x1=12.5,
+        x1=num_parciales + 0.5,
         y1=median_same_winner_visitante,
         line=dict(color='Red', width=2, dash='dash')
     )
@@ -1100,7 +1111,7 @@ def get_fig_resultados_parciales_visitante(df, chosen_team):
         type='line',
         x0=0.5,
         y0=total_partidos_visitante - median_same_loser_visitante,
-        x1=12.5,
+        x1=num_parciales + 0.5,
         y1=total_partidos_visitante - median_same_loser_visitante,
         line=dict(color='Blue', width=2, dash='dash')
     )
@@ -1115,7 +1126,7 @@ def get_fig_diferencias_parciales(df, chosen_team):
     differences[f'partido'] = df['partido']
 
     # Calcular la diferencia para los demás parciales ajustando por el incremento exclusivo de ese parcial.
-    for i in range(2, 13):
+    for i in range(2, 1+num_parciales):
         differences[f'parcial_{i}_diff'] = (
             (df[f'parcial_{i}_my_team'] - df[f'parcial_{i}_rival']) -
             (df[f'parcial_{i-1}_my_team'] - df[f'parcial_{i-1}_rival'])
@@ -1132,7 +1143,7 @@ def get_fig_diferencias_parciales(df, chosen_team):
 
     # Calcular las medianas por cada parcial.
     long_format['Parcial'] = pd.Categorical(long_format['Parcial'], 
-                                            categories=[f'{i}' for i in range(1, 13)], 
+                                            categories=[f'{i}' for i in range(1, 1+num_parciales)], 
                                             ordered=True)
 
     medianas = long_format.groupby('Parcial')['Diferencia de Goles'].median().reset_index()
@@ -1173,12 +1184,15 @@ def get_fig_diferencias_parciales(df, chosen_team):
         
     )
 
+    # add ticks very x units
+    fig.update_xaxes(tickmode='linear', tick0=1, dtick=1)
+
     # line at y = 0 for reference
     fig.add_shape(
         type='line',
         x0=0.5,
         y0=0,
-        x1=12.5,
+        x1=num_parciales + 0.5,
         y1=0,
         line=dict(color='rgba(255, 0, 0, 0.35)', width=2)
 
@@ -1204,7 +1218,7 @@ def get_fig_diferencias_parciales_local(df, chosen_team):
     differences[f'partido'] = df['partido']
 
     # Calcular la diferencia para los demás parciales ajustando por el incremento exclusivo de ese parcial.
-    for i in range(2, 13):
+    for i in range(2, 1+num_parciales):
         differences[f'parcial_{i}_diff'] = (
             (df[f'parcial_{i}_my_team'] - df[f'parcial_{i}_rival']) -
             (df[f'parcial_{i-1}_my_team'] - df[f'parcial_{i-1}_rival'])
@@ -1221,7 +1235,7 @@ def get_fig_diferencias_parciales_local(df, chosen_team):
 
     # Calcular las medianas por cada parcial.
     long_format['Parcial'] = pd.Categorical(long_format['Parcial'], 
-                                            categories=[f'{i}' for i in range(1, 13)], 
+                                            categories=[f'{i}' for i in range(1, 1+num_parciales)], 
                                             ordered=True)
 
     medianas = long_format.groupby('Parcial')['Diferencia de Goles'].median().reset_index()
@@ -1255,7 +1269,7 @@ def get_fig_diferencias_parciales_visitante(df, chosen_team):
     differences[f'partido'] = df['partido']
 
     # Calcular la diferencia para los demás parciales ajustando por el incremento exclusivo de ese parcial.
-    for i in range(2, 13):
+    for i in range(2, 1+num_parciales):
         differences[f'parcial_{i}_diff'] = (
             (df[f'parcial_{i}_my_team'] - df[f'parcial_{i}_rival']) -
             (df[f'parcial_{i-1}_my_team'] - df[f'parcial_{i-1}_rival'])
@@ -1272,7 +1286,7 @@ def get_fig_diferencias_parciales_visitante(df, chosen_team):
 
     # Calcular las medianas por cada parcial.
     long_format['Parcial'] = pd.Categorical(long_format['Parcial'], 
-                                            categories=[f'{i}' for i in range(1, 13)], 
+                                            categories=[f'{i}' for i in range(1, 1+num_parciales)], 
                                             ordered=True)
 
     medianas = long_format.groupby('Parcial')['Diferencia de Goles'].median().reset_index()
@@ -1295,7 +1309,7 @@ def get_fig_rendimiento_parciales(df, chosen_team):
     same_winner_counts = []
     different_winner_counts = []
     empate_counts = []
-    parciales = list(range(1, 13))  # Números de parciales del 1 al 12
+    parciales = list(range(1, 1+num_parciales))  # Números de parciales del 1 al 12
 
     # Loop sobre los parciales del 1 al 12
     for i in parciales:
