@@ -758,14 +758,14 @@ def get_fig_resultados_min50(df, chosen_team):
     # Update layout
     # Update layout
     fig.update_layout(
-        title_text="Número de Partidos por Resultado en el Minuto 50 y al Final del Partido",
+        title_text="Número de Partidos por Resultado en los últimos 10 mins y al Final del Partido",
         title=dict(
             x=0.5,  # Center the title
             xanchor='center',
             font=dict(size=12, color='#ececec')  # Font color
         ),
         xaxis_title='Resultado al Final del Partido',
-        yaxis_title='Diferencia en el Minuto 50',
+        yaxis_title='Diferencia a falta de 10 mins',
         yaxis=dict(
             tickmode='array',
             tickvals=[0, 1, 2],
