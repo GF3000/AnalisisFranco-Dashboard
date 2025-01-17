@@ -7,7 +7,7 @@ import plotly.express as px
 from scipy.stats import chi2_contingency
 from plotly.subplots import make_subplots
 import numpy as np
-from scipy.stats import mannwhitneyu, ks_2samp
+from scipy.stats import mannwhitneyu, ks_2samp, pearsonr, spearmanr, linregress
 from db_manager import DataBase
 
 num_parciales = 12
@@ -208,15 +208,23 @@ def run_analysis():
 
     with tabs[4]:
         
-        st.subheader("Análisis de las rachas")
+        st.subheader("Transiciones entre rachas")
 
         st.info("En este gráfico se muestra la racha de victorias. El valor '0' indica un empate. Un valor positivo indica una racha de victorias y un valor negativo indica una racha de derrotas.", icon="ℹ️")
 
         fig_rachas = get_fig_rachas(all_matches, selected_team)
         
         # show as fig_rachas as table
-        st.write("Rachas:")
         st.write(fig_rachas)
+
+        st.divider()
+
+        fig_rachas_puntos = get_fig_rachas_puntos(all_matches, selected_team)
+        st.header("Influencia de los últimos partidos en el resultado:")
+        st.info("En el eje horizontal se muentra la diferencia de goles de los partidos mientras que en el eje vertical los puntos obtenidos en los últimos 5 partidos."
+                " Se muestra una regresión lineal junto a su Coeficiente de Determinación (R²), que indica la opacidad de la linea de la regresión ", icon="ℹ️")
+        
+        st.write(fig_rachas_puntos)
 
     with tabs[5]:
 
@@ -1809,5 +1817,72 @@ def get_fig_rachas(df, chosen_team):
     )
 
     
+
+    return fig
+
+def get_fig_rachas_puntos(df, chosen_team):
+
+    df["final_result"] = df["final_result"].apply(lambda x: x.split(" ")[0])
+    rachas_df = df[["partido","final_result", "diferencia_goles", "puntos_ultimos_5_my_team"]]
+
+    # Calcula la correlación de Pearson y Spearman
+    pearson_corr, pearson_p = pearsonr(rachas_df['diferencia_goles'], rachas_df['puntos_ultimos_5_my_team'])
+    spearman_corr, spearman_p = spearmanr(rachas_df['diferencia_goles'], rachas_df['puntos_ultimos_5_my_team'])
+
+    # Ajustar la linea de una regresión lineal
+    slope, intercept, r_value, p_value, std_err = linregress(rachas_df['diferencia_goles'], rachas_df['puntos_ultimos_5_my_team'])
+    
+    # Crear el scatter plot con diferencia_goles y puntos_ultimos_5_my_team
+    fig = px.scatter(
+        rachas_df,
+        x='diferencia_goles',
+        y='puntos_ultimos_5_my_team',
+        color='final_result',
+        title=f'Rachas de Puntos de {chosen_team}',
+        labels={'diferencia_goles': 'Diferencia de Goles', 'puntos_ultimos_5_my_team': 'Puntos Últimos 5 Partidos', 'final_result': 'Resultado', 'partido': 'Partido'},
+        hover_data={'partido': True}
+    )
+
+    # Pintar la regresión lineal
+    fig.add_trace(go.Scatter(
+        x=rachas_df['diferencia_goles'],
+        y=intercept + slope * rachas_df['diferencia_goles'],
+        mode='lines',
+        name=f'Regresión Lineal (R²={r_value**2:.2f})',
+        line=dict(color=f'rgba(255, 165, 0,{r_value**2:.2f})')
+    ))
+
+    # Actualizar el diseño del gráfico
+    fig.update_layout(
+        title=dict(
+            text=f'Rachas de Puntos y Resultados de {chosen_team}',
+            x=0.5,
+            xanchor='center',
+            y=0.9,
+            yanchor='top'
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#ececec')
+    )
+
+    # Actualizar la leyenda
+    fig.update_traces(marker=dict(size=12))
+
+    # Dibujar una línea en x = 0 para referencia
+    maxima_racha = rachas_df['puntos_ultimos_5_my_team'].max()
+    fig.add_shape(
+        type='line',
+        x0=0,
+        y0=0,
+        x1=0,
+        y1=maxima_racha+1,
+        line=dict(color='rgba(255, 0, 0, 0.35)', width=2, dash='dash')
+    )
+
+
+
+
+
 
     return fig
