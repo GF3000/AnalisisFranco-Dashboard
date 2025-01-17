@@ -134,6 +134,9 @@ def run_analysis():
         st.subheader("Influencia del lugar de juego en el partido")
 
 
+        st.info("Los test de Kolmogorov-Smirnov y Mann-Whitney U se utilizan para comparar la distribución de la diferencia de goles y goles totales entre los partidos jugados en casa y fuera de casa. Un p-valor menor a 0.05 indica que las distribuciones son diferentes. Si el p-valor es mayor a 0.05, no se puede rechazar la hipótesis nula de que las distribuciones son iguales.", icon="ℹ️")
+
+
         # Distribución de la diferencia de goles
         fig = get_fig_dist_dif(all_matches, selected_team)
         st.plotly_chart(fig)
@@ -142,10 +145,10 @@ def run_analysis():
         fig2 = get_dist_goles_totales(all_matches, selected_team)
         st.plotly_chart(fig2)
 
-        st.divider()
-
     with tabs[2]:
+        st.divider()
         st.subheader("Exclusiones")
+        st.info("Los test de Kolmogorov-Smirnov y Mann-Whitney U se utilizan para comparar la distribución de exclusiones entre los partidos jugados en casa y fuera de casa. Un p-valor menor a 0.05 indica que las distribuciones son diferentes. Si el p-valor es mayor a 0.05, no se puede rechazar la hipótesis nula de que las distribuciones son iguales.", icon="ℹ️")
 
         # Distribución de exclusiones
         fig3 = get_fig_dist_exclusionses_lugar(all_matches, selected_team)
@@ -156,13 +159,12 @@ def run_analysis():
         st.plotly_chart(fig4)
 
 
+
+
     with tabs[3]:
 
-        st.subheader("Evolución del partido")
-
-        st.divider()
-
         st.subheader("Resultados Parciales vs Resultados Finales")
+        st.info("En estos mapas de calor se puede ver la relación entre los resultados parciales y el resultado final del partido.", icon="ℹ️")
 
         # HeatMap de resultados en los primeros 5 minutos vs Resultados finales
         fig5 = get_fig_resultados_5mins(all_matches, selected_team)
@@ -196,6 +198,7 @@ def run_analysis():
 
         st.divider()
         st.subheader("Análisis de las diferencias parciales")
+        st.info("Se muestra en cada box-plot la distribución de la diferencia de goles de cada parcial. Se muestra una linea con la mediana.", icon="ℹ️")
 
         fig10 = get_fig_diferencias_parciales(all_matches, selected_team)
         st.plotly_chart(fig10)
@@ -228,18 +231,29 @@ def run_analysis():
 
     with tabs[5]:
 
+        st.divider()
         st.subheader("Análisis de los tiempo muertos")
+        st.info("Distribución de los tiempos muertos por parciales.", icon="ℹ️")
+
         
         fig_histograma_tiempos_muertos = get_analisis_tiempos_muertos(all_matches, selected_team)
         st.plotly_chart(fig_histograma_tiempos_muertos)
 
     with tabs[6]:
 
-        st.subheader("Análisis de los jugadores")
+
+        st.divider()
+        st.subheader("Máximos goleadores")
+        st.info("Se muestra en un gráfico de barras horizontal los goles totales de cada jugador y su meddiana de goles. El tamaño de la barra de la mediana está escalado", icon="ℹ️")
+
 
         fig_maximos_goleadores = get_maximos_goleadores(all_matches, selected_team)
         st.plotly_chart(fig_maximos_goleadores)
 
+
+        st.divider()
+        st.subheader("Máximos infractores")
+        st.info("Se muestra en un gráfico de barras horizontal las exclusiones y tarjetas rojas de cada jugador", icon="ℹ️") 
         fig_maximos_expulsados = get_maximos_infractores(all_matches, selected_team)
         st.plotly_chart(fig_maximos_expulsados)
 
@@ -1702,19 +1716,22 @@ def get_gt_vs_dif(df, chosen_team):
     # Scatter plot with the goles totales (y) vs diferencia de goles (x)
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(
-        x=df['diferencia_goles'],
-        y=df['goles_totales'],
-        mode='markers',
-        marker=dict(
-            color='#FFA500',
-            size=10
-        ),
-        text=df['partido'],
-        hoverinfo='text'
-    ))
-
     # Add a line at x = 0 for reference
+
+    # x = diferencia de goles, y = goles totales, color = local o visitante
+    fig = px.scatter(df,
+                     x='diferencia_goles',
+                     y='goles_totales',
+                     color='my_team_is',
+                     hover_name='partido',
+                     hover_data={'diferencia_goles': True, 'goles_totales': True},
+                     title=f'Goles Totales vs Diferencia de Goles de {chosen_team}',
+                     labels={'diferencia_goles': 'Diferencia de Goles', 'goles_totales': 'Goles Totales', 'my_team_is': 'Lugar'},
+                     color_discrete_sequence=['#FFA500', '#00FFFF'],
+                     opacity=0.75
+                     )
+    fig.update_traces(marker=dict(size=16))
+    
 
     fig.add_shape(
         type='line',
@@ -1724,6 +1741,13 @@ def get_gt_vs_dif(df, chosen_team):
         y1=df['goles_totales'].max(),
         line=dict(color='rgba(255, 0, 0, 0.35)', width=2, dash='dash')
     )
+
+
+    
+
+
+        
+
 
     # Update layout
 
