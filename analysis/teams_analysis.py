@@ -8,38 +8,57 @@ from scipy.stats import chi2_contingency
 from plotly.subplots import make_subplots
 import numpy as np
 from scipy.stats import mannwhitneyu, ks_2samp
+from db_manager import DataBase
 
 num_parciales = 12
 
 def run_analysis():
     st.header("Análisis de los Partidos")
 
-    files = [f for f in os.listdir("data/partidos/") if f.endswith(".xlsx")]
 
-    if not files:
+    try:
+        db = DataBase.load('db.pkl') 
+    except FileNotFoundError:
+        st.error("No se ha encontrado la base de datos 'db.pkl'.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error al cargar la base de datos: {e}")
+        st.stop()
+
+
+    nombres = [competicion.nombre for competicion in db.competiciones]
+
+    if not nombres:
         st.error("No hay archivos disponibles en el directorio 'data/equipos/'.")
         st.stop()
 
     st.write("Selecciona una competición a analizar:")
 
-    selected_competition = st.selectbox("Competición:", files)
+    selected_competition = st.selectbox("Competición:", nombres)
 
     if not selected_competition:
         st.warning("Selecciona una competición para continuar.")
         st.stop()
 
-    # Categoria Infantil Check box, if pressed, num_parciales = 4
-    if st.checkbox("Categoria Infantil (25 mins por parte)"):
+    competicion = db.get_competicion(selected_competition)
+    if competicion.infantil:
+        st.write("Competición Infantil")
         global num_parciales
         num_parciales = 10
     else:
         num_parciales = 12
 
+    temporada = competicion.temporada
+
+    st.info(f"Temporada: {temporada}")
+
+    
+
 
 
 
     # Cargamos el df de partidos
-    df = pd.read_excel(f"data/partidos/{selected_competition}")
+    df = pd.read_excel(f"data/partidos/{competicion.archivo}")
 
     # Seleccionamos equipo
     todos_equipos = [df["nombre_local"].unique(), df["nombre_visitante"].unique()]
@@ -55,7 +74,7 @@ def run_analysis():
 
     st.divider()
 
-    tabs = st.tabs(["Resumen", "Influencia del lugar de juego", "Exclusiones", "Evolución del partido", "Análisis de los tiempo muertos", "Análisis de los jugadores"])
+    tabs = st.tabs(["Resumen", "Influencia del lugar de juego", "Exclusiones", "Evolución", "Rachas", "Tiempo muertos", "Jugadores"])
 
     with tabs[0]:
         st.subheader("Resumen del Equipo")
@@ -161,6 +180,8 @@ def run_analysis():
         st.divider()
         st.subheader("Análisis de los resultados parciales")
 
+        st.info("La linea discontinua horizontal roja indica la mediana de victorias en parciales. La linea discontinua horizontal azul indica la mediana de derrotas en parciales desde arriba hacia abajo.", icon="ℹ️")
+
         fig8 = get_fig_resultados_parciales(all_matches, selected_team)
         st.plotly_chart(fig8)
 
@@ -185,15 +206,26 @@ def run_analysis():
         fig_diferencias_parciales_visitante = get_fig_diferencias_parciales_visitante(all_matches, selected_team)
         st.plotly_chart(fig_diferencias_parciales_visitante)
 
-
     with tabs[4]:
+        
+        st.subheader("Análisis de las rachas")
+
+        st.info("En este gráfico se muestra la racha de victorias. El valor '0' indica un empate. Un valor positivo indica una racha de victorias y un valor negativo indica una racha de derrotas.", icon="ℹ️")
+
+        fig_rachas = get_fig_rachas(all_matches, selected_team)
+        
+        # show as fig_rachas as table
+        st.write("Rachas:")
+        st.write(fig_rachas)
+
+    with tabs[5]:
 
         st.subheader("Análisis de los tiempo muertos")
         
         fig_histograma_tiempos_muertos = get_analisis_tiempos_muertos(all_matches, selected_team)
         st.plotly_chart(fig_histograma_tiempos_muertos)
 
-    with tabs[5]:
+    with tabs[6]:
 
         st.subheader("Análisis de los jugadores")
 
@@ -1707,9 +1739,75 @@ def get_gt_vs_dif(df, chosen_team):
     return fig
 
 
+def get_fig_rachas(df, chosen_team):
+
+    # Obtener rachas:
+    rachas_df = df[["partido","racha_my_team"]]
+
+    transiciones = []
+    for i in range(1, len(rachas_df)):
+        if rachas_df.iloc[i-1, 1] != rachas_df.iloc[i, 1]:
+            transiciones.append((rachas_df.iloc[i-1, 1], rachas_df.iloc[i, 1], rachas_df.iloc[i, 0]))
+    # Crear un DataFrame con las transiciones
+    transiciones_df = pd.DataFrame(transiciones, columns=['source', 'target', 'partido'])
 
 
+    # Crear una cuenta de las transiciones
+    transiciones_counts = transiciones_df.groupby(['source', 'target']).size().reset_index(name='count')
 
+   
+    # Agrupar las transiciones y registrar los partidos involucrados
+    transiciones_counts = transiciones_df.groupby(['source', 'target']).agg(
+        count=('partido', 'size'),
+        partidos=('partido', lambda x: '<br>'.join(x))  # Usar \n para crear líneas nuevas
+    ).reset_index()
 
+    # Crear lista de nodos únicos
+    unique_states = pd.unique(transiciones_counts[['source', 'target']].values.ravel())
+    state_to_index = {state: i for i, state in enumerate(unique_states)}
 
+    # Cast count to int
 
+    transiciones_counts['source_index'] = transiciones_counts['source'].map(state_to_index)
+    transiciones_counts['target_index'] = transiciones_counts['target'].map(state_to_index)
+
+    transiciones_counts['count'] = transiciones_counts['count'].astype(int)
+    
+    
+    # Crear el gráfico Sankey
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(
+            pad=15,
+            thickness=20,
+            line=dict(color="black", width=0.5),
+            label=[str(state) for state in unique_states],
+        ),
+        link=dict(
+            source=transiciones_counts['source_index'],
+            target=transiciones_counts['target_index'],
+            value=transiciones_counts['count'],
+            customdata=transiciones_counts['partidos'],  # Datos personalizados para hover
+            hovertemplate=(
+                "<b style='font-size: 16px;'>De %{source.label} a %{target.label} (%{value:d} partidos)</b><br>"  # Texto de hover
+                "%{customdata}<extra></extra>"  # Mostrar los partidos con salto de línea
+            )
+        )
+    )])
+
+    # Actualizar el diseño del gráfico
+    fig.update_layout(
+        title=dict(
+            text=f'Rachas de {chosen_team}',
+            x=0.5,
+            xanchor='center',
+            y=0.9,
+            yanchor='top'
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#ececec')
+    )
+
+    
+
+    return fig

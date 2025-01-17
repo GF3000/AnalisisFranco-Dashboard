@@ -5,34 +5,55 @@ import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import mannwhitneyu, ks_2samp
 import numpy as np
+from db_manager import DataBase
 
 
 
 def run_analysis():
     st.header("Análisis de Competición")
 
-    files = [f for f in os.listdir("data/partidos/") if f.endswith(".xlsx")]
 
-    if not files:
+    try:
+        db = DataBase.load('db.pkl') 
+    except FileNotFoundError:
+        st.error("No se ha encontrado la base de datos 'db.pkl'.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error al cargar la base de datos: {e}")
+        st.stop()
+
+
+    nombres = [competicion.nombre for competicion in db.competiciones]
+
+    if not nombres:
         st.error("No hay archivos disponibles en el directorio 'data/equipos/'.")
         st.stop()
 
+
     st.write("Selecciona una competición a analizar:")
 
-    selected_competition = st.selectbox("Competición:", files)
+    nombre = st.selectbox("Competición:", nombres)
 
-    if not selected_competition:
+    competicion = db.get_competicion(nombre)
+    nombre_archivo = competicion.archivo
+    temporada = competicion.temporada
+
+    if not competicion:
         st.warning("Selecciona una competición para continuar.")
         st.stop()
 
-    nombre_competicion = selected_competition.split('_')[1].split('.')[0]
+    nombre_competicion = nombre
 
     # Cargamos el df de partidos
-    df = pd.read_excel(f"data/partidos/{selected_competition}")
+    df = pd.read_excel(f"data/partidos/{nombre_archivo}")
+    
+    st.info(f"Temporada: {temporada}")
+    st.write("Número de partidos:", len(df))
+
+
     df['partido'] = df['nombre_local'] + ' vs ' + df['nombre_visitante']
 
 
-    st.write("Número de partidos:", len(df))
 
     st.divider()
 

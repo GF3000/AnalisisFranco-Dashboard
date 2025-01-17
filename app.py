@@ -1,5 +1,6 @@
 import streamlit as st
 from analysis import competition_analysis, teams_analysis, team_comparison, download_competition
+from db_manager import DataBase, Competiciones
 
 # Título de la aplicación
 st.set_page_config(
