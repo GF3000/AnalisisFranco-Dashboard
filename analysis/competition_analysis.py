@@ -74,7 +74,7 @@ def run_analysis():
 
         st.divider()
         st.subheader("Diferencia de goles absoluta")
-        st.info("En el eje x se muestra la diferencia de goles absoluta y en el eje y los goles totales del partido. El color indica el ganador del partido. Las lineas discontinuas indican la media de goles totales y diferencia de goles absoluta.", icon="ℹ️")
+        st.info("En el eje x se muestra la diferencia de goles absoluta y en el eje y los goles totales del partido. El color indica el ganador del partido. Para los puntos que representan más de un partido, con diferentes ganadores (Local o Visitante), se les ha asignado la etiqueta 'Mixto'. Las lineas discontinuas indican la media de goles totales y diferencia de goles absoluta.", icon="ℹ️")
         fig_gt_diferencia = get_fig_gt_diferencia(df, nombre_competicion)
 
         st.plotly_chart(fig_gt_diferencia)
@@ -184,21 +184,51 @@ def get_fig_resultados(df, nombre_competicion):
 
 def get_fig_gt_diferencia(df, nombre_competicion):
 
-    # Count the occurrences of each point
-    df['count'] = df.groupby(['diferencia_goles_absoluta', 'goles_totales'])['goles_totales'].transform('count')
-    # delete NaN values in the count column
-    df = df.dropna(subset=['count'])
-    
-    print(df["count"])
+    # Crear una clave única para agrupar las coordenadas
+    df['key'] = list(zip(df['diferencia_goles_absoluta'], df['goles_totales']))
 
 
-    # Create the scatter plot with size based on the count
-    fig_scatter = px.scatter(df, x='diferencia_goles_absoluta', y='goles_totales', 
+    def determinar_ganador(grupo):
+        valores_unicos = grupo.unique()
+        if len(valores_unicos) > 1:  # Si hay más de un valor único, devuelve 'Mixto'
+            return 'Mixto'
+        return valores_unicos[0]  # Si todos son iguales, devuelve el único valor
+    def combinar_partido_y_ganador(grupo):
+        return '<br>'.join(f"{partido} ({ganador})" for partido, ganador in zip(grupo['partido'], grupo['ganador_partido']))
+
+
+
+    # Agrupar los puntos que comparten las mismas coordenadas
+    df['count'] = 1  # Add a count column
+    agrupado = df.groupby('key').agg({
+        'partido': lambda x: '<br>'.join(
+        f"{partido} ({ganador})" for partido, ganador in zip(x, df.loc[x.index, 'ganador_partido'])
+        ),
+        'diferencia_goles_absoluta': 'first',  # Mantén la diferencia de goles absoluta
+        'goles_totales': 'first',             # Mantén los goles totales
+        'ganador_partido': determinar_ganador,           # Puedes decidir qué hacer con esta columna (primer valor, por ejemplo)
+        'count': 'count'                        # Suma el tamaño o conteo de puntos
+    }).reset_index(drop=True)
+
+    # Crear el scatter plot
+    fig_scatter = px.scatter(agrupado, 
+                            x='diferencia_goles_absoluta', 
+                            y='goles_totales', 
                             size='count',
                             title='Scatter Plot of Goles Totales vs Diferencia Goles Absoluta',
                             color='ganador_partido',
-                            labels={'diferencia_goles_absoluta': 'Diferencia Goles Absoluta', 'goles_totales': 'Goles Totales', 'ganador_partido': 'Ganador'},
-                            color_discrete_sequence=['#FFA500', '#00FFFF', '#FFD700'])
+                            labels={
+                                'diferencia_goles_absoluta': 'Diferencia Goles Absoluta', 
+                                'goles_totales': 'Goles Totales', 
+                                'ganador_partido': 'Ganador'
+                            },
+                            hover_name='partido',  # Mostrar los partidos concatenados
+                            hover_data={
+                                'diferencia_goles_absoluta': True, 
+                                'goles_totales': True, 
+                                'ganador_partido': False,
+                                'count': False
+                            })
     fig_scatter.update_traces(marker=dict(line=dict(width=0)))  # Remove stroke
 
     fig_scatter.update_layout(
@@ -226,14 +256,14 @@ def get_fig_gt_diferencia(df, nombre_competicion):
         type='line',
         x0=avg_dif, y0=min(df['goles_totales']),
         x1=avg_dif, y1=max(df['goles_totales'])+3,
-        line=dict(color='rgba(255, 165, 0, 0.8)', width=2, dash='dash')
+        line=dict(color='rgba(255, 165, 0, 0.6)', width=2, dash='dash')
     )
 
     fig_scatter.add_shape(
         type='line',
         x0=min(df['diferencia_goles_absoluta'])-1, y0=avg_goles_totales,
         x1=max(df['diferencia_goles_absoluta'])+1, y1=avg_goles_totales,
-        line=dict(color='rgba(255, 165, 0, 0.8)', width=2, dash='dash')
+        line=dict(color='rgba(255, 165, 0, 0.6)', width=2, dash='dash')
     )
 
     # Añadir un cuadro de texto en el gráfico con las medias y desviaciones estándar
@@ -256,13 +286,7 @@ def get_fig_gt_diferencia(df, nombre_competicion):
     
     df['partido'] = df['nombre_local'] + ' vs ' + df['nombre_visitante']
     # Add partido name (local y visitante)when hover
-    fig_scatter.update_traces(
-        hovertemplate='<b>Partido:</b> %{customdata[0]}<br>'
-                    '<b>Diferencia Goles Absoluta:</b> %{x}<br>'
-                    '<b>Goles Totales:</b> %{y}<br>'
-                    '<b>Count:</b> %{marker.size}<extra></extra>',
-        customdata=df[['partido']]
-    )
+    
 
     return fig_scatter
 
@@ -1092,16 +1116,32 @@ def get_scatter_rachas(df, nombre_competicion):
 
     rachas_df['diferencia_puntos'] = rachas_df['puntos_ultimos_5_local'] - rachas_df['puntos_ultimos_5_visitante']
 
-    # Create a scatter plot with the rachas_df DataFrame
-    fig = px.scatter(rachas_df,
-                     x='diferencia_goles',
-                     y='diferencia_puntos',
-                     color='ganador_partido',
-                    labels={'diferencia_goles': 'Diferencia de goles', 'diferencia_puntos': 'Diferencia de puntos', 'ganador_partido': 'Ganador del partido'},
-                    hover_name='partido',
-                    hover_data={'diferencia_goles': False, 'diferencia_puntos': False},
-                    size='count'
+    # Crear una columna para concatenar los nombres de los partidos que comparten las mismas coordenadas
+    rachas_df['key'] = list(zip(rachas_df['diferencia_goles'], rachas_df['diferencia_puntos']))
+    agrupado = rachas_df.groupby('key').agg({
+        'partido': lambda x: '<br>'.join(x),  # Combina los nombres de los partidos en un solo string con saltos de línea
+        'diferencia_goles': 'first',          # Mantén la diferencia de goles
+        'diferencia_puntos': 'first',         # Mantén la diferencia de puntos
+        'ganador_partido': 'first',           # Puedes elegir qué hacer con esta columna (mantener el primero, por ejemplo)
+        'count': 'count'                      # Cuenta cuántos partidos comparten las mismas coordenadas
+    }).reset_index(drop=True)
+
+    # Crear un scatter plot con los datos agrupados
+    fig = px.scatter(agrupado,
+                    x='diferencia_goles',
+                    y='diferencia_puntos',
+                    color='ganador_partido',
+                    labels={
+                        'diferencia_goles': 'Diferencia de goles',
+                        'diferencia_puntos': 'Diferencia de puntos',
+                        'ganador_partido': 'Ganador del partido'
+                    },
+                    title=f'Diferencia de goles vs Diferencia de puntos en los últimos 5 partidos de {nombre_competicion}',
+                    hover_name='partido',  # Mostrar todos los partidos concatenados
+                    hover_data={'diferencia_goles': False, 'diferencia_puntos': False, 'ganador_partido': False, 'count': False},  # Mostrar el número de partidos en el hover
+                    size='count',
                     )
+
     
     # Ajustar la linea de una regresión lineal
     slope, intercept, r_value, p_value, std_err = linregress(rachas_df['diferencia_goles'], rachas_df['diferencia_puntos'])
