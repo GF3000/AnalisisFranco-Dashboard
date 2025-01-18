@@ -3,9 +3,10 @@ import pandas as pd
 import os
 import plotly.express as px
 import plotly.graph_objects as go
-from scipy.stats import mannwhitneyu, ks_2samp
+from scipy.stats import mannwhitneyu, ks_2samp, linregress
 import numpy as np
 from db_manager import DataBase
+
 
 
 
@@ -57,20 +58,29 @@ def run_analysis():
 
     st.divider()
 
-    tabs = st.tabs(["Partidos", "Flujo de resultados", "Análisis de exclusiones", "Análisis de jugadores"])
+    tabs = st.tabs(["Partidos", "Flujo de resultados", "Rachas","Análisis de exclusiones", "Análisis de jugadores"])
 
 
 
     # Tab 1: Partidos
     with tabs[0]:
+
+        st.subheader("Resultados de los partidos")
+
+
         fig_resultados = get_fig_resultados(df, nombre_competicion)
 
         st.plotly_chart(fig_resultados)
 
+        st.divider()
+        st.subheader("Diferencia de goles absoluta")
+        st.info("En el eje x se muestra la diferencia de goles absoluta y en el eje y los goles totales del partido. El color indica el ganador del partido. Las lineas discontinuas indican la media de goles totales y diferencia de goles absoluta.", icon="ℹ️")
         fig_gt_diferencia = get_fig_gt_diferencia(df, nombre_competicion)
 
         st.plotly_chart(fig_gt_diferencia)
 
+        st.divider()
+        st.subheader("Distribución de las diferencias de goles")
         fig_dist_diferencia = get_dist_diferencia(df, nombre_competicion)
 
         st.plotly_chart(fig_dist_diferencia)
@@ -93,8 +103,22 @@ def run_analysis():
 
         st.plotly_chart(fig_flujo_min50)
 
-    # Tab 3: Análisis de exclusiones
     with tabs[2]:
+        st.subheader("Influencia de las rachas en los resultados")
+        st.info("Heatmap que muestra la relación entre el equipo con mejor puntuación en los últimos 5 partidos y el resultado del partido. En la esquina superior derecha aparecen las coincidencias, es decir, los partidos en los que el ganador fue el equipo con una mejor puntuación en los últimos 5 partidos", icon="ℹ️")
+        fig_rachas = get_heatmap_rachas(df, nombre_competicion)
+        st.write(fig_rachas)
+
+        st.divider()
+        st.subheader("Diferencia entre rachas de local y visitante")
+        st.info("Scatter plot que muestra la diferencia absoluta entre las rachas de local y visitante y la diferencia absoluta del partido. En el eje x se muestra la racha de local y en el eje y la racha de visitante. El color indica el ganador del partido.", icon="ℹ️")
+        fig_rachas_local_visitante = get_scatter_rachas(df, nombre_competicion)
+        st.write(fig_rachas_local_visitante)
+
+
+
+    # Tab 3: Análisis de exclusiones
+    with tabs[3]:
 
         fig_dist_exclusiones = get_dist_exclusiones_local_visitante(df, nombre_competicion)
 
@@ -110,7 +134,7 @@ def run_analysis():
 
     # Tab 4: Análisis de jugadores
 
-    with tabs[3]:
+    with tabs[4]:
 
         fig_top_goleadores_total = get_maximo_goleador_total(df, nombre_competicion)
 
@@ -172,7 +196,9 @@ def get_fig_gt_diferencia(df, nombre_competicion):
     fig_scatter = px.scatter(df, x='diferencia_goles_absoluta', y='goles_totales', 
                             size='count',
                             title='Scatter Plot of Goles Totales vs Diferencia Goles Absoluta',
-                            color_discrete_sequence=['#f4a800'])
+                            color='ganador_partido',
+                            labels={'diferencia_goles_absoluta': 'Diferencia Goles Absoluta', 'goles_totales': 'Goles Totales', 'ganador_partido': 'Ganador'},
+                            color_discrete_sequence=['#FFA500', '#00FFFF', '#FFD700'])
     fig_scatter.update_traces(marker=dict(line=dict(width=0)))  # Remove stroke
 
     fig_scatter.update_layout(
@@ -200,22 +226,22 @@ def get_fig_gt_diferencia(df, nombre_competicion):
         type='line',
         x0=avg_dif, y0=min(df['goles_totales']),
         x1=avg_dif, y1=max(df['goles_totales'])+3,
-        line=dict(color='Red', width=2, dash='dash')
+        line=dict(color='rgba(255, 165, 0, 0.8)', width=2, dash='dash')
     )
 
     fig_scatter.add_shape(
         type='line',
         x0=min(df['diferencia_goles_absoluta'])-1, y0=avg_goles_totales,
         x1=max(df['diferencia_goles_absoluta'])+1, y1=avg_goles_totales,
-        line=dict(color='Red', width=2, dash='dash')
+        line=dict(color='rgba(255, 165, 0, 0.8)', width=2, dash='dash')
     )
 
     # Añadir un cuadro de texto en el gráfico con las medias y desviaciones estándar
     fig_scatter.add_annotation(
         text=(
             f"<b>Estadísticas:</b><br>"
-            f"Media Goles Totales: {avg_goles_totales:.2f} ± {std_goles_totales:.2f}<br>"
-            f"Media Dif. Goles Abs: {avg_dif:.2f} ± {std_dif:.2f}<br>"
+            f"Media Goles Totales: {avg_goles_totales:.1f} ± {std_goles_totales:.1f}<br>"
+            f"Media Dif. Goles Abs: {avg_dif:.1f} ± {std_dif:.1f}<br>"
         ),
         xref='paper', yref='paper',  # Referencia a coordenadas del papel (en vez de los datos)
         x=1 ,y=0,  # Posición del cuadro de texto (fuera del gráfico)
@@ -984,5 +1010,131 @@ def get_equipos_mas_excluidos (df, nombre_competicion):
     )
 
     return fig_top_exclusiones
+
+def get_heatmap_rachas(df, nombre_competicion):
+
+    # Create a DataFrame with the columns 'partido', 'nombre_local', 'nombre_visitante', 'goles_local' and 'goles_visitante'
+    rachas_df = df[['partido', 'ganador_partido', 'puntos_ultimos_5_local', 'puntos_ultimos_5_visitante']].copy()
+
+
+    # Create column "mayor_racha" with the maximum value between racha_local and racha_visitante. The values are "Local", "Visitante" or "Empate"
+    rachas_df['mayor_racha'] = rachas_df.apply(
+        lambda row: 'Empate' if row['puntos_ultimos_5_local'] == row['puntos_ultimos_5_visitante'] else ('Local' if row['puntos_ultimos_5_local'] > row['puntos_ultimos_5_visitante'] else 'Visitante'), 
+        axis=1
+    )
+
+    # return (rachas_df["mayor_racha"].value_counts())
+    
+    # HeatMap with the rachas_df DataFrame
+
+    # 1. Count the number of occurrences of each combination of 'ganador_partido' and 'mayor_racha'
+    pivot_table = rachas_df.pivot_table(index='ganador_partido', columns='mayor_racha', values='partido', aggfunc='count', fill_value=0)
+
+    # Order the columns and index of the pivot_table
+    pivot_table = pivot_table[['Visitante', 'Empate', 'Local']]
+    pivot_table = pivot_table.reindex(['Visitante', 'Empate', 'Local'])
+
+
+    hover_text = pivot_table.reindex(index = pivot_table.index, columns = pivot_table.columns, fill_value = 0).applymap(
+        lambda x: f'{x}')
+    
+    # 2. Create a HeatMap with the pivot_table
+    fig = go.Figure(data=go.Heatmap(
+        z=pivot_table.values,
+        x=pivot_table.columns,
+        y=pivot_table.index,
+        colorscale='Cividis',
+        text=hover_text,
+        texttemplate='%{text}',
+        hoverinfo='text',
+        hovertemplate='%{text}',
+
+    ))
+
+    # 3. Update the layout of the HeatMap
+    fig.update_layout(
+        title=dict(
+            text=f'Rachas de resultados en los últimos 5 partidos de {nombre_competicion}',
+            x=0.5,  # Position the title in the center
+            xanchor='center',  # Anchor the title to the center
+            y=0.9,  # Position the title at the top
+            yanchor='top',  # Anchor the title to the top
+            font=dict(color='#ececec', family="Arial", size=20)  # Color del texto en amarillo y en negrita
+        ),
+        xaxis_title='Mayor Racha',
+        yaxis_title='Ganador Partido',
+        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background for the paper
+        plot_bgcolor='rgba(0,0,0,0)',   # Transparent background for the plot
+        font=dict(color='#ececec', size = 16)  # Font color
+    )
+
+    
+    # Show values ehre Mayor Racha and ganador partido are the same
+    same_values = pivot_table.values.diagonal()
+
+    # Add an annotation with the number of occurrences of the same values
+    fig.add_annotation(
+        x=1,  # Position the annotation in the center
+        y=1,  # Position the annotation in the center
+        xref='paper',  # Reference the x position to the paper
+        yref='paper',  # Reference the y position to the paper
+        text=f'Coincidencias: {sum(same_values)} / {len(rachas_df)} ({int(sum(same_values) / len(rachas_df) * 100)}%)',
+        showarrow=False,  # Do not show an arrow
+        font=dict(color='black', size = 14)  # Font color
+    )
+    
+    return fig
+
+def get_scatter_rachas(df, nombre_competicion):
+
+    # copy df
+    rachas_df = df.copy()
+
+    rachas_df['diferencia_puntos'] = rachas_df['puntos_ultimos_5_local'] - rachas_df['puntos_ultimos_5_visitante']
+
+    # Create a scatter plot with the rachas_df DataFrame
+    fig = px.scatter(rachas_df,
+                     x='diferencia_goles',
+                     y='diferencia_puntos',
+                     color='ganador_partido',
+                    labels={'diferencia_goles': 'Diferencia de goles', 'diferencia_puntos': 'Diferencia de puntos', 'ganador_partido': 'Ganador del partido'},
+                    hover_name='partido',
+                    hover_data={'diferencia_goles': False, 'diferencia_puntos': False},
+                    size='count'
+                    )
+    
+    # Ajustar la linea de una regresión lineal
+    slope, intercept, r_value, p_value, std_err = linregress(rachas_df['diferencia_goles'], rachas_df['diferencia_puntos'])
+
+    # Pinta la linea de regresión
+    fig.add_trace(go.Scatter(
+        x=rachas_df['diferencia_goles'],
+        y=slope * rachas_df['diferencia_goles'] + intercept,
+        mode='lines',
+        name='Regresión lineal (R²={:.2f})'.format(r_value**2),
+        line=dict(color=f'rgba(255, 165, 0,{1.5* r_value**2:.2f})')
+    ))
+
+
+    fig.update_layout(
+        title=dict(
+            text=f'Diferencia de goles vs Diferencia de puntos en los últimos 5 partidos de {nombre_competicion}',
+            x=0.5,  # Position the title in the center
+            xanchor='center',  # Anchor the title to the center
+            y=0.9,  # Position the title at the top
+            yanchor='top',  # Anchor the title to the top
+            font=dict(color='#ececec', family="Arial", size=20)  # Color del texto en amarillo y en negrita
+        ),
+        xaxis_title='Diferencia de goles',
+        yaxis_title='Diferencia de puntos',
+        paper_bgcolor='rgba(0,0,0,0)',  # Transparent background for the paper
+        plot_bgcolor='rgba(0,0,0,0)',   # Transparent background for the plot
+        font=dict(color='#ececec', size = 16)  # Font color
+    )
+
+    return fig
+
+    
+
 
 
