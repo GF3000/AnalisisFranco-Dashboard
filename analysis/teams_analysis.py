@@ -216,10 +216,15 @@ def run_analysis():
         st.info("En este gráfico se muestra la racha de victorias. El valor '0' indica un empate. Un valor positivo indica una racha de victorias y un valor negativo indica una racha de derrotas.", icon="ℹ️")
 
         fig_rachas = get_fig_rachas(all_matches, selected_team)
+
         
         # show as fig_rachas as table
         st.write(fig_rachas)
 
+        st.write("Tabla de probabilidades de rachas:")
+        st.info("En esta tabla se muestra la probabilidad de que el equipo gane, empate o pierda en función de la racha de victorias o derrotas. Cada racha es una fila y cada columna es la probabilidad de ganar, empatar o perder.", icon="ℹ️")
+        tabla_probalbilidades_rachas = get_tabla_probabilidades_rachas(all_matches, selected_team)
+        st.write(tabla_probalbilidades_rachas)
         st.divider()
 
         fig_rachas_puntos = get_fig_rachas_puntos(all_matches, selected_team)
@@ -1910,3 +1915,70 @@ def get_fig_rachas_puntos(df, chosen_team):
 
 
     return fig
+
+def get_tabla_probabilidades_rachas(df, chosen_team):
+
+
+    # Obtener probabiliadd total de victoria, empate y derrota
+    total_victorias = df[df['resultado'] == 'Victoria'].shape[0]
+    total_empates = df[df['resultado'] == 'Empate'].shape[0]
+    total_derrotas = df[df['resultado'] == 'Derrota'].shape[0]
+
+    probabilidad_victoria = round(total_victorias / df.shape[0] * 100, 1)
+    probabilidad_empate = round(total_empates / df.shape[0] * 100, 1)
+    probabilidad_derrota = round(total_derrotas / df.shape[0] * 100, 1)
+
+
+    # Obtener rachas:
+    rachas_df = df[["partido","racha_my_team"]]
+
+    transiciones = []
+    for i in range(1, len(rachas_df)):
+        if rachas_df.iloc[i-1, 1] != rachas_df.iloc[i, 1]:
+            transiciones.append((rachas_df.iloc[i-1, 1], rachas_df.iloc[i, 1], rachas_df.iloc[i, 0]))
+    
+    transiciones_df = pd.DataFrame(transiciones, columns=['source', 'target', 'partido'])
+
+    # Cast source and target to int
+    transiciones_df = transiciones_df.astype({'source': int, 'target': int})
+
+
+        # Categorización de la columna 'target'
+    conditions = [
+        transiciones_df['target'] < 0,
+        transiciones_df['target'] == 0,
+        transiciones_df['target'] > 0
+    ]
+    choices = ['Derrota', 'Empate', 'Victoria']
+    transiciones_df['target'] = np.select(conditions, choices, default='Unknown')
+    sources = transiciones_df['source'].unique()
+
+    # Crear un diccionario para almacenar las probabilidades de transición
+    probabilidades = {}
+
+    # Loop sobre las fuentes
+    for source in sources:
+        # Obtener las transiciones desde la fuente
+        transiciones_source = transiciones_df[transiciones_df['source'] == source]
+        # Contar las transiciones
+        total_transiciones = transiciones_source.shape[0]
+        # Contar las transiciones a cada destino
+        conteo_transiciones = transiciones_source['target'].value_counts()
+        # Calcular las probabilidades
+        probabilidades[source] = (conteo_transiciones / total_transiciones *100).round(1)
+
+    # Crear un DataFrame con las probabilidades
+    probabilidades_df = pd.DataFrame(probabilidades).T.fillna(0)
+
+    # Rename the columns in the order Victoria, Empate, Derrota
+    probabilidades_df = probabilidades_df[['Victoria', 'Empate', 'Derrota']]
+
+    # Sort by ascending index
+    probabilidades_df = probabilidades_df.sort_index()
+
+    # Add a new row total probabilities (probabilidad_victoria, probabilidad_empate, probabilidad_derrota)
+    probabilidades_df.loc['Total'] = [probabilidad_victoria, probabilidad_empate, probabilidad_derrota]
+
+
+
+    return probabilidades_df
