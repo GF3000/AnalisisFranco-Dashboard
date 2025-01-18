@@ -1873,7 +1873,7 @@ def get_fig_rachas_puntos(df, chosen_team):
         y=intercept + slope * rachas_df['diferencia_goles'],
         mode='lines',
         name=f'Regresión Lineal (R²={r_value**2:.2f})',
-        line=dict(color=f'rgba(255, 165, 0,{r_value**2:.2f})')
+        line=dict(color=f'rgba(255, 165, 0,{2* r_value**2:.2f})')
     ))
 
     # Actualizar el diseño del gráfico
