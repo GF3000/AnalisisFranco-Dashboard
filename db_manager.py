@@ -45,8 +45,8 @@ if __name__ == "__main__":
     db.add_competicion(Competiciones('GUERRERAS 23-24', '2023-2024', False, 'partidos_Guerreras2324.xlsx'))
 
     # DHOF
-    db.add_competicion(Competiciones('DHOF 22-23', '2022-2023', True, 'partidos_DHOF2223.xlsx'))
-    db.add_competicion(Competiciones('DHOF 23-24', '2023-2024', True, 'partidos_DHOF2324.xlsx'))
+    db.add_competicion(Competiciones('DHOF 22-23', '2022-2023', False, 'partidos_DHOF2223.xlsx'))
+    db.add_competicion(Competiciones('DHOF 23-24', '2023-2024', False, 'partidos_DHOF2324.xlsx'))
 
 
     db.save('db.pkl')
